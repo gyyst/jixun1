@@ -110,7 +110,7 @@ void setup()
   // the library initializes this with an Adafruit splash screen.
   display.display();
   delay(500); // Pause for 2 seconds
-  // Clear the buffer
+  // Clear the bu
   display.clearDisplay();
   display.drawLine(0, 0, 0, 128, SSD1306_WHITE);
   display.display();
@@ -119,5 +119,4 @@ void setup()
 void loop()
 {
   int key = scanner();
-  
 }
