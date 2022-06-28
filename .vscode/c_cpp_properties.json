@@ -10,6 +10,7 @@
             "includePath": [
                 "e:/keil5/Aduino Temperaturef an control system/include",
                 "e:/keil5/Aduino Temperaturef an control system/src",
+                "e:/keil5/Aduino Temperaturef an control system/.pio/libdeps/uno/OneWire",
                 "e:/keil5/Aduino Temperaturef an control system/.pio/libdeps/uno/L298N/src",
                 "e:/keil5/Aduino Temperaturef an control system/.pio/libdeps/uno/Adafruit SSD1306",
                 "e:/keil5/Aduino Temperaturef an control system/.pio/libdeps/uno/Adafruit GFX Library",
@@ -18,6 +19,7 @@
                 "C:/Users/Lenovo/.platformio/packages/framework-arduino-avr/libraries/Wire/src",
                 "C:/Users/Lenovo/.platformio/packages/framework-arduino-avr/cores/arduino",
                 "C:/Users/Lenovo/.platformio/packages/framework-arduino-avr/variants/standard",
+                "e:/keil5/Aduino Temperaturef an control system/.pio/libdeps/uno/Unity/src",
                 "C:/Users/Lenovo/.platformio/packages/framework-arduino-avr/libraries/EEPROM/src",
                 "C:/Users/Lenovo/.platformio/packages/framework-arduino-avr/libraries/HID/src",
                 "C:/Users/Lenovo/.platformio/packages/framework-arduino-avr/libraries/SoftwareSerial/src",
@@ -28,6 +30,7 @@
                 "path": [
                     "e:/keil5/Aduino Temperaturef an control system/include",
                     "e:/keil5/Aduino Temperaturef an control system/src",
+                    "e:/keil5/Aduino Temperaturef an control system/.pio/libdeps/uno/OneWire",
                     "e:/keil5/Aduino Temperaturef an control system/.pio/libdeps/uno/L298N/src",
                     "e:/keil5/Aduino Temperaturef an control system/.pio/libdeps/uno/Adafruit SSD1306",
                     "e:/keil5/Aduino Temperaturef an control system/.pio/libdeps/uno/Adafruit GFX Library",
@@ -36,6 +39,7 @@
                     "C:/Users/Lenovo/.platformio/packages/framework-arduino-avr/libraries/Wire/src",
                     "C:/Users/Lenovo/.platformio/packages/framework-arduino-avr/cores/arduino",
                     "C:/Users/Lenovo/.platformio/packages/framework-arduino-avr/variants/standard",
+                    "e:/keil5/Aduino Temperaturef an control system/.pio/libdeps/uno/Unity/src",
                     "C:/Users/Lenovo/.platformio/packages/framework-arduino-avr/libraries/EEPROM/src",
                     "C:/Users/Lenovo/.platformio/packages/framework-arduino-avr/libraries/HID/src",
                     "C:/Users/Lenovo/.platformio/packages/framework-arduino-avr/libraries/SoftwareSerial/src",
