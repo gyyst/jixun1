@@ -61,7 +61,7 @@ byte addr[8];
 float celsius;
 bool flag = false;
 int page;
-int setFanSpeed;
+int setFanSpeed = 50;
 int buf[128];
 int temnum = 128;
 int temcount = 0;
@@ -69,10 +69,12 @@ int setTemp = 45;
 L298N motor(EN, IN1, IN2);
 int setTime;
 int setE;
-int SetFanSpeed = 133;
+int SetFanSpeed = 0;
 long usedTime;
 int maxE;
 int lastPage;
+int FanBuf[128];
+int fancount = 0;
 
 unsigned long eTime;
 int eCount;
@@ -82,6 +84,21 @@ unsigned long time;
 
 unsigned long lastTick;
 int eFlag;
+int scanner(void);
+void printNowModel();
+void printNowFanSpeed(int);
+void printNowTemprature(float);
+void printSetFanSpeed();
+void printNowFanCurrent(float);
+void printTemperatureCurve(float);
+// void  printFanSpeedCurve(motor.getSpeed());
+void printTemp(float);
+void printTime();
+void printE();
+void printEffectiveTime();
+void printcount();
+void reset();
+void controlPage(); //进行页面的控制
 
 int scanner(void)
 {
@@ -136,9 +153,13 @@ void printNowFanSpeed(int speed)
     else
       display.setTextColor(SSD1306_WHITE, SSD1306_BLACK);
     display.setCursor(0, 8);
+
     display.print(F("now fan speed:"));
-    display.print(speed);
-    display.print(F("%"));
+    if (speed == 0)
+      display.print("0");
+    else
+      display.print((int)((speed - 132) / 123.0 * 100 + 0.5));
+    display.print(F(" %"));
   }
   else
     return;
@@ -162,7 +183,7 @@ void printSetFanSpeed()
 {
   if (page == 1)
   {
-    if (menu == 4)
+    if (menu == 1)
       display.setTextColor(SSD1306_BLACK, SSD1306_WHITE);
     else
       display.setTextColor(SSD1306_WHITE, SSD1306_BLACK);
@@ -170,7 +191,18 @@ void printSetFanSpeed()
     display.print(F("set fan speed:"));
     display.print(setFanSpeed);
     display.print(F("%"));
-    motor.setSpeed((int)(setFanSpeed / 100.0 * 123 + 132));
+    motor.stop();
+    if (setFanSpeed >= 0)
+    {
+
+      motor.setSpeed((int)(setFanSpeed / 100.0 * 123 + 132));
+      motor.forward();
+    }
+    else if (setFanSpeed < 0)
+    {
+      motor.setSpeed((int)(-(setFanSpeed / 100.0 * 123) + 132));
+      motor.backward();
+    }
   }
   else
     return;
@@ -237,11 +269,13 @@ void printNowModel()
   if (page != lastPage)
   {
     display.clearDisplay();
+    display.fillRect(1, 48, 127, 14, SSD1306_BLACK);
+    reset();
   }
 
   if (page == 1)
   {
-    if (menu == 1)
+    if (menu == 0)
       display.setTextColor(SSD1306_BLACK, SSD1306_WHITE);
     else
       display.setTextColor(SSD1306_WHITE, SSD1306_BLACK);
@@ -252,7 +286,7 @@ void printNowModel()
   }
   else if (page == 2)
   {
-    if (menu == 1)
+    if (menu == 0)
       display.setTextColor(SSD1306_BLACK, SSD1306_WHITE);
     else
       display.setTextColor(SSD1306_WHITE, SSD1306_BLACK);
@@ -260,6 +294,62 @@ void printNowModel()
     display.print(F("model:"));
     display.print(F("temp control"));
     lastPage = 2;
+    if (celsius < setTemp)
+    {
+      digitalWrite(3, HIGH);
+      digitalWrite(5, LOW);
+    }
+
+    if (celsius > setTemp)
+    {
+      digitalWrite(3, LOW);
+      if (celsius > setTemp + 5)
+        digitalWrite(5, HIGH);
+    }
+
+    if (abs(celsius - setTemp) < setE)
+    {
+      if (eFlag == 1)
+      {
+        eCount++;
+        eFlag = 0;
+      }
+    }
+    else
+    {
+      // eTime = 0;
+      eFlag = 1;
+    }
+
+    if (usedTime == -1 && setTime != 0 && abs(celsius - setTemp) < 1)
+      usedTime = millis() - timebegin;
+
+    if (usedTime != -1)
+      maxE = max(abs(celsius - setTemp), maxE);
+
+    if (setTime == 0)
+    {
+      digitalWrite(3, LOW);
+      digitalWrite(5, LOW);
+    }
+
+    Serial.print((millis() - timebegin) / 1000);
+    Serial.print(" ");
+    Serial.println(setTime);
+    // 2蜂鸣器，3风扇（非风扇控制模式），4灯泡，5电阻（加热用）
+    if ((millis() - timebegin) / 1000 >= setTime)
+    {
+      digitalWrite(5, LOW);
+      digitalWrite(3, LOW);
+      digitalWrite(2, HIGH);
+      digitalWrite(4, HIGH);
+      delay(100);
+      digitalWrite(2, LOW);
+      digitalWrite(4, LOW);
+    }
+    if (eFlag == 0)
+      eTime += millis() - lastTick;
+    lastTick = millis();
   }
   return;
 }
@@ -270,8 +360,8 @@ void printTemperatureCurve(float temperature)
   {
     buf[temcount] = 68 - (int)((temperature / 75.0) * 24);
     int liney = 68 - (int)((setTemp / 75.0) * 24);
-    // for (int i = 1; i < 127; i += 2)
-    //   display.drawPixel(i, liney, SSD1306_WHITE);
+    for (int i = 1; i < 127; i += 2)
+      display.drawPixel(i, liney, SSD1306_WHITE);
 
     if (temcount < temnum - 1)
       temcount++;
@@ -291,13 +381,12 @@ void printTemperatureCurve(float temperature)
   else
     return;
 }
-int FanBuf[128];
-int fancount;
+
 void printFanSpeedCurve(int speed)
 {
   if (page == 1)
   {
-    FanBuf[fancount] = 63 - (int)((speed / 255) * 133);
+    FanBuf[fancount] = 64 - (int)(((speed - 132) / 123.0) * 24);
 
     if (fancount < temnum - 1)
       fancount++;
@@ -309,10 +398,11 @@ void printFanSpeedCurve(int speed)
 
     display.drawLine(0, 40, 0, 63, SSD1306_WHITE);
     display.drawLine(0, 63, 127, 63, SSD1306_WHITE);
-    for (int i = 0; i < fancount; i++)
-    {
-      display.drawPixel(i, FanBuf[i], SSD1306_WHITE);
-    }
+    display.drawPixel(fancount, FanBuf[fancount], SSD1306_WHITE);
+    // for (int i = 0; i < fancount; i++)
+    // {
+    //   display.drawPixel(i, FanBuf[i], SSD1306_WHITE);
+    // }
   }
   else
     return;
@@ -321,7 +411,7 @@ void printTemp(float temperature)
 {
   if (page == 2)
   {
-    if (menu == 0)
+    if (menu == 1)
       display.setTextColor(SSD1306_BLACK, SSD1306_WHITE);
     else
       display.setTextColor(SSD1306_WHITE, SSD1306_BLACK);
@@ -329,11 +419,11 @@ void printTemp(float temperature)
     display.setCursor(0, 8); // Start at top-left corner
     // display.fillRect(30, 0, 96, 7, SSD1306_BLACK);
     display.display();
-    display.print("Temp: ");
+    display.print(F("Temp: "));
     display.print(temperature);
-    display.print(" / ");
+    display.print(F(" / "));
     display.print(setTemp);
-    display.print(" C   ");
+    display.print(F(" C   "));
   }
 }
 
@@ -341,7 +431,7 @@ void printTime()
 {
   if (page == 2)
   {
-    if (menu == 1)
+    if (menu == 2)
       display.setTextColor(SSD1306_BLACK, SSD1306_WHITE);
     else
       display.setTextColor(SSD1306_WHITE, SSD1306_BLACK);
@@ -360,7 +450,7 @@ void printE()
 {
   if (page == 2)
   {
-    if (menu == 2)
+    if (menu == 3)
       display.setTextColor(SSD1306_BLACK, SSD1306_WHITE);
     else
       display.setTextColor(SSD1306_WHITE, SSD1306_BLACK);
@@ -412,40 +502,7 @@ void reset()
   maxE = 0;
 }
 
-void setup()
-{
-  Serial.begin(9600);
-  pinMode(A0, OUTPUT);
-  pinMode(A2, INPUT_PULLUP);
-  pinMode(A3, INPUT_PULLUP);
-  pinMode(A4, INPUT_PULLUP);
-  pinMode(A5, INPUT_PULLUP);
-  // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
-  if (!display.begin(SSD1306_SWITCHCAPVCC))
-  {
-    Serial.println(F("SSD1306 allocation failed"));
-    for (;;)
-      ; // Don't proceed, loop forever
-  }
-  // Clear the buffer
-  display.clearDisplay();
-  if (!ds.search(addr) && !flag)
-  {
-    // Serial.println("No more addresses.");
-    Serial.println();
-    ds.reset_search();
-    delay(250);
-  }
-  page = 2;
-  display.setTextSize(1); // Normal 1:1 pixel scale
-  setTemp = 30;
-  setTime = 0;
-  setE = 10;
-  lastTick = millis();
-  eFlag = 0;
-}
-
-void loop()
+void controlPage()
 {
   int key = scanner();
   switch (key)
@@ -478,12 +535,20 @@ void loop()
       menu++;
       if (menu > 1)
         menu = 0;
+      break;
     }
   case 3:
     if (page == 2)
     {
-      if (menu == 1)
-        if (setTemp > 50)
+      if (menu == 0)
+      {
+        page--;
+        if (page < 1)
+          page = 2;
+        break;
+      }
+      else if (menu == 1)
+        if (setTemp > 30)
         {
           setTemp--;
           display.fillRect(1, 48, 127, 14, SSD1306_BLACK);
@@ -510,14 +575,22 @@ void loop()
       }
       else if (menu == 1)
       {
-        if (setFanSpeed > 0)
+        if (setFanSpeed > -100)
           setFanSpeed -= 1;
+        break;
       }
     }
   case 4:
     if (page == 2)
     {
-      if (menu == 1)
+      if (menu == 0)
+      {
+        page++;
+        if (page > 2)
+          page = 1;
+        break;
+      }
+      else if (menu == 1)
         if (setTemp < 75)
         {
           setTemp++;
@@ -550,19 +623,66 @@ void loop()
       }
     }
   }
+  Serial.println(key);
+}
+
+void setup()
+{
+  Serial.begin(9600);
+  pinMode(A0, OUTPUT);
+  pinMode(A2, INPUT_PULLUP);
+  pinMode(A3, INPUT_PULLUP);
+  pinMode(A4, INPUT_PULLUP);
+  pinMode(A5, INPUT_PULLUP);
+  pinMode(3, OUTPUT);
+  // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
+  if (!display.begin(SSD1306_SWITCHCAPVCC))
+  {
+    Serial.println(F("SSD1306 allocation failed"));
+    for (;;)
+      ; // Don't proceed, loop forever
+  }
+  // Clear the buffer
+  display.clearDisplay();
+  if (!ds.search(addr) && !flag)
+  {
+    // Serial.println("No more addresses.");
+    Serial.println();
+    ds.reset_search();
+    delay(250);
+  }
+  menu = 0;
+  page = 1;
+  lastPage = 1;
+  display.setTextSize(1); // Normal 1:1 pixel scale
+  setTemp = 30;
+  setTime = 0;
+  setE = 10;
+  lastTick = millis();
+  eFlag = 0;
+  setFanSpeed = 0;
+}
+
+void loop()
+{
+  controlPage();
   celsius = getTemp();
-  Serial.println(celsius);
+  // Serial.println(celsius);
   printNowModel();
+  //以下是page==1
   printNowFanSpeed(motor.getSpeed());
   printNowTemprature(celsius);
   printSetFanSpeed();
   printNowFanCurrent(2);
   printTemperatureCurve(celsius);
+  // printFanSpeedCurve(motor.getSpeed());//显存不够不启用。
+  //以下是page==2
   printTemp(celsius);
   printTime();
   printE();
   printEffectiveTime();
   printcount();
   display.display();
-  delay(500);
+
+  // delay(200);
 }
